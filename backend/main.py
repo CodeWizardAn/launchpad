@@ -13,6 +13,7 @@ from database import get_db, Task, Note, Job
 from database import get_db, Task, Note, Job, Profile
 import json
 from database import get_db, Task, Note
+from database import get_db, Task, Note, Job, Profile, VaultFile
 
 # ── Config ────────────────────────────────────────────────────
 load_dotenv()
@@ -360,3 +361,60 @@ Format it cleanly with section headers. Make it sound confident and professional
     )
 
     return {"resume": response.choices[0].message.content}
+
+# ── Vault ─────────────────────────────────────────────────────
+import shutil
+from fastapi import UploadFile, File, Form
+
+VAULT_DIR = os.path.join(BASE_DIR, 'vault_storage')
+os.makedirs(VAULT_DIR, exist_ok=True)
+
+@app.get("/vault")
+def get_vault_files(db: Session = Depends(get_db)):
+    return db.query(VaultFile).order_by(VaultFile.created_at.desc()).all()
+
+@app.post("/vault/upload")
+async def upload_file(
+    file:     UploadFile = File(...),
+    name:     str        = Form(...),
+    category: str        = Form("other"),
+    db:       Session    = Depends(get_db)
+):
+    # save file to disk
+    safe_filename = f"{datetime.utcnow().strftime('%Y%m%d%H%M%S')}_{file.filename}"
+    filepath      = os.path.join(VAULT_DIR, safe_filename)
+
+    with open(filepath, "wb") as f:
+        shutil.copyfileobj(file.file, f)
+
+    size = os.path.getsize(filepath)
+    size_str = f"{round(size/1024, 1)} KB" if size < 1024*1024 else f"{round(size/1024/1024, 1)} MB"
+
+    vault_file = VaultFile(
+        name=name, category=category,
+        filename=safe_filename, filepath=filepath,
+        size=size_str
+    )
+    db.add(vault_file)
+    db.commit()
+    db.refresh(vault_file)
+    return vault_file
+
+@app.get("/vault/download/{file_id}")
+def download_file(file_id: int, db: Session = Depends(get_db)):
+    from fastapi.responses import FileResponse
+    vault_file = db.query(VaultFile).filter(VaultFile.id == file_id).first()
+    if not vault_file:
+        return {"error": "File not found"}
+    return FileResponse(vault_file.filepath, filename=vault_file.filename)
+
+@app.delete("/vault/{file_id}")
+def delete_vault_file(file_id: int, db: Session = Depends(get_db)):
+    vault_file = db.query(VaultFile).filter(VaultFile.id == file_id).first()
+    if not vault_file:
+        return {"error": "Not found"}
+    if os.path.exists(vault_file.filepath):
+        os.remove(vault_file.filepath)
+    db.delete(vault_file)
+    db.commit()
+    return {"deleted": file_id}

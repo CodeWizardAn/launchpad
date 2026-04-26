@@ -76,3 +76,14 @@ class Profile(Base):
     links      = Column(String, default="")   # json string
     bio        = Column(String, default="")
     updated_at = Column(DateTime, default=datetime.utcnow)
+    
+class VaultFile(Base):
+    __tablename__ = "vault_files"
+
+    id         = Column(Integer, primary_key=True, index=True)
+    name       = Column(String, nullable=False)
+    category   = Column(String, default="other")  # marksheet | certificate | id | offer_letter | other
+    filename   = Column(String, nullable=False)
+    filepath   = Column(String, nullable=False)
+    size       = Column(String, default="")
+    created_at = Column(DateTime, default=datetime.utcnow)
