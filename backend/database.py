@@ -59,3 +59,20 @@ class Job(Base):
     url         = Column(String, default="")
     notes       = Column(String, default="")
     created_at  = Column(DateTime, default=datetime.utcnow)
+    
+class Profile(Base):
+    __tablename__ = "profiles"
+
+    id         = Column(Integer, primary_key=True, index=True)
+    name       = Column(String, default="")
+    email      = Column(String, default="")
+    phone      = Column(String, default="")
+    college    = Column(String, default="")
+    degree     = Column(String, default="")
+    branch     = Column(String, default="")
+    cgpa       = Column(String, default="")
+    year       = Column(String, default="")
+    skills     = Column(String, default="")   # comma separated
+    links      = Column(String, default="")   # json string
+    bio        = Column(String, default="")
+    updated_at = Column(DateTime, default=datetime.utcnow)

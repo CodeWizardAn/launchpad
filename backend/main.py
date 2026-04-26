@@ -10,7 +10,8 @@ import joblib
 import numpy as np
 import os
 from database import get_db, Task, Note, Job
-
+from database import get_db, Task, Note, Job, Profile
+import json
 from database import get_db, Task, Note
 
 # ── Config ────────────────────────────────────────────────────
@@ -275,3 +276,87 @@ def delete_job(job_id: int, db: Session = Depends(get_db)):
     db.delete(job)
     db.commit()
     return {"deleted": job_id}
+
+# ── Profile ───────────────────────────────────────────────────
+class ProfileUpdate(BaseModel):
+    name:    str = ""
+    email:   str = ""
+    phone:   str = ""
+    college: str = ""
+    degree:  str = ""
+    branch:  str = ""
+    cgpa:    str = ""
+    year:    str = ""
+    skills:  str = ""
+    links:   str = "{}"
+    bio:     str = ""
+
+@app.get("/profile")
+def get_profile(db: Session = Depends(get_db)):
+    profile = db.query(Profile).first()
+    if not profile:
+        # create empty profile on first load
+        profile = Profile()
+        db.add(profile)
+        db.commit()
+        db.refresh(profile)
+    return profile
+
+@app.put("/profile")
+def update_profile(data: ProfileUpdate, db: Session = Depends(get_db)):
+    profile = db.query(Profile).first()
+    if not profile:
+        profile = Profile()
+        db.add(profile)
+    profile.name    = data.name
+    profile.email   = data.email
+    profile.phone   = data.phone
+    profile.college = data.college
+    profile.degree  = data.degree
+    profile.branch  = data.branch
+    profile.cgpa    = data.cgpa
+    profile.year    = data.year
+    profile.skills  = data.skills
+    profile.links   = data.links
+    profile.bio     = data.bio
+    profile.updated_at = datetime.utcnow()
+    db.commit()
+    db.refresh(profile)
+    return profile
+
+# ── Resume ────────────────────────────────────────────────────
+@app.get("/resume/generate")
+def generate_resume(db: Session = Depends(get_db)):
+    profile = db.query(Profile).first()
+    if not profile:
+        return {"error": "No profile found. Fill your profile first."}
+
+    prompt = f"""You are a professional resume writer. Generate a clean, ATS-friendly resume for this student.
+
+Name: {profile.name}
+Email: {profile.email}
+Phone: {profile.phone}
+College: {profile.college}
+Degree: {profile.degree} in {profile.branch}
+CGPA: {profile.cgpa}
+Year: {profile.year}
+Bio: {profile.bio}
+Skills: {profile.skills}
+Links: {profile.links}
+
+Write a complete resume with these sections:
+1. Contact Info
+2. Professional Summary (3-4 lines, punchy)
+3. Education
+4. Technical Skills (grouped by category)
+5. Projects (make up 2 realistic projects based on their skills)
+6. Links
+
+Format it cleanly with section headers. Make it sound confident and professional."""
+
+    response = ai_client.chat.completions.create(
+        model    = "llama-3.3-70b-versatile",
+        messages = [{"role": "user", "content": prompt}]
+    )
+
+    return {"resume": response.choices[0].message.content}
