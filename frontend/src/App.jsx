@@ -13,9 +13,16 @@ import Jobs from './pages/Jobs'
 export default function App() {
   return (
     <BrowserRouter>
-      <div style={{ display: 'flex', minHeight: '100vh' }}>
+      <div style={{ display: 'flex', minHeight: '100vh', background: 'var(--bg)' }}>
         <Sidebar />
-        <main style={{ flex: 1, padding: '2rem', overflowY: 'auto' }}>
+        <main style={{
+          flex: 1,
+          padding: '2.5rem',
+          overflowY: 'auto',
+          overflowX: 'hidden',
+          marginLeft: '240px',
+          minHeight: '100vh'
+        }}>
           <Routes>
             <Route path="/"        element={<Dashboard />} />
             <Route path="/tasks"   element={<Tasks />}     />
@@ -30,5 +37,4 @@ export default function App() {
         </main>
       </div>
     </BrowserRouter>
-  )
-}
+  )}
